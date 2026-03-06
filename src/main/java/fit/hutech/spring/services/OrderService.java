@@ -32,7 +32,6 @@ public class OrderService {
         orderRepository.save(order);
     }
 
-    // Logic cập nhật trạng thái đơn hàng
     public void updateOrderStatus(Long orderId, String status) {
         orderRepository.findById(orderId).ifPresent(order -> {
             order.setStatus(status);

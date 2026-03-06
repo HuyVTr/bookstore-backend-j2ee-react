@@ -82,6 +82,10 @@ public class User implements UserDetails {
     @Builder.Default
     private Set<Role> roles = new HashSet<>();
 
+    @Column(name = "is_active")
+    @Builder.Default
+    private boolean isActive = true;
+
     // Tích hợp thay đổi phương thức getAuthorities() từ hình ảnh
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
@@ -118,7 +122,7 @@ public class User implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return true;
+        return isActive;
     }
 
     @Override

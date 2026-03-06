@@ -45,6 +45,9 @@ public class Order {
     @Column(name = "shipping_address")
     private String shippingAddress;
 
+    @Column(name = "receiver_name")
+    private String receiverName;
+
     @Column(name = "phone_number")
     private String phoneNumber;
 

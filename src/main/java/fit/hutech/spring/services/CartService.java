@@ -5,7 +5,6 @@ import java.util.Optional;
 
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,31 +31,14 @@ public class CartService {
     private final IBookRepository bookRepository;
     private final IUserRepository userRepository;
     private final IShoppingCartRepository shoppingCartRepository;
-
-    // Inject ApplicationContext is generally bad practice, but kept for saveOrder
-    // consistency with previous code
-    // Better to inject Repos directly. Let's stick to injected repos if possible.
-    // However, saveOrder used context.getBean, I will refactor it to use injected
-    // fields if possible or keep context.
-    @org.springframework.beans.factory.annotation.Autowired
-    private org.springframework.context.ApplicationContext context;
+    private final fit.hutech.spring.repositories.IOrderRepository orderRepository;
+    private final fit.hutech.spring.repositories.IOrderDetailRepository orderDetailRepository;
 
     private User getAuthenticatedUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null && authentication.isAuthenticated() &&
                 !authentication.getPrincipal().equals("anonymousUser")) {
-            if (authentication instanceof OAuth2AuthenticationToken oauthToken) {
-                String email = oauthToken.getPrincipal().getAttribute("email");
-                if (email != null)
-                    return userRepository.findByEmail(email).orElse(null);
-                // Fallback to name if email is null (Github)
-                String name = oauthToken.getPrincipal().getAttribute("name"); // login
-                if (name == null)
-                    name = oauthToken.getPrincipal().getAttribute("login");
-                return userRepository.findByUsername(name).orElse(null);
-            } else {
-                return userRepository.findByUsername(authentication.getName()).orElse(null);
-            }
+            return userRepository.findByUsername(authentication.getName()).orElse(null);
         }
         return null;
     }
@@ -171,6 +153,7 @@ public class CartService {
         order.setOrderDate(java.time.LocalDateTime.now());
         order.setTotalPrice(getSumPrice(session));
         order.setShippingAddress(address);
+        order.setReceiverName(receiverName);
         order.setPhoneNumber(phoneNumber);
         order.setNote(note);
         order.setPaymentMethod(paymentMethod);
@@ -182,14 +165,9 @@ public class CartService {
             order.setUser(user);
 
         // Lưu Order trước để có ID
-        fit.hutech.spring.repositories.IOrderRepository orderRepository = context
-                .getBean(fit.hutech.spring.repositories.IOrderRepository.class);
         orderRepository.save(order);
 
         // 2. Lưu chi tiết hóa đơn (OrderDetail)
-        fit.hutech.spring.repositories.IOrderDetailRepository orderDetailRepository = context
-                .getBean(fit.hutech.spring.repositories.IOrderDetailRepository.class);
-
         cart.getCartItems().forEach(item -> {
             var orderDetail = new fit.hutech.spring.entities.OrderDetail();
             orderDetail.setOrder(order);

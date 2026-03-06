@@ -1,24 +1,26 @@
 package fit.hutech.spring.utils;
 
-import java.util.ArrayList;
+import java.util.Arrays;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import fit.hutech.spring.services.OAuthService;
-import fit.hutech.spring.services.UserService;
-import jakarta.validation.constraints.NotNull;
+import fit.hutech.spring.security.JwtAuthEntryPoint;
+import fit.hutech.spring.security.JwtAuthTokenFilter;
 import lombok.RequiredArgsConstructor;
 
 @Configuration
@@ -27,8 +29,12 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-        private final OAuthService oAuthService;
-        private final UserService userService;
+        private final JwtAuthEntryPoint unauthorizedHandler;
+
+        @Bean
+        public JwtAuthTokenFilter authenticationJwtTokenFilter() {
+                return new JwtAuthTokenFilter();
+        }
 
         @Bean
         public PasswordEncoder passwordEncoder() {
@@ -36,128 +42,70 @@ public class SecurityConfig {
         }
 
         @Bean
-        public SecurityFilterChain securityFilterChain(@NotNull HttpSecurity http) throws Exception {
-                return http.csrf(csrf -> csrf.disable()) // Tắt CSRF để API gọi được
+        public AuthenticationManager authenticationManager(AuthenticationConfiguration authConfig) throws Exception {
+                return authConfig.getAuthenticationManager();
+        }
+
+        @Bean
+        public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+                http.cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                                .csrf(csrf -> csrf.disable())
+                                .exceptionHandling(exceptionHandling -> exceptionHandling
+                                                .authenticationEntryPoint(unauthorizedHandler)
+                                                .accessDeniedPage("/403"))
+                                .sessionManagement(sessionManagement -> sessionManagement
+                                                .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                                 .authorizeHttpRequests(auth -> auth
                                                 // Cho phép truy cập công khai
                                                 .requestMatchers("/css/**", "/js/**", "/", "/oauth/**", "/register",
-                                                                "/error", "/images/**")
+                                                                "/error", "/images/**", "/login", "/api/auth/**")
                                                 .permitAll()
-                                                // Phân quyền ADMIN và STAFF cho các thao tác quản lý Sách
-                                                .requestMatchers("/books/edit/**", "/books/add", "/books/delete/**")
-                                                .hasAnyAuthority("ADMIN", "STAFF")
 
-                                                // Phân quyền ADMIN và STAFF cho các thao tác quản lý Đơn hàng
-                                                .requestMatchers("/admin/orders/**")
-                                                .hasAnyAuthority("ADMIN", "STAFF")
+                                                // Mở public GET api sách
+                                                .requestMatchers(HttpMethod.GET, "/api/public/books/**")
+                                                .permitAll()
 
-                                                // CHỈ ADMIN mới được quản lý User
-                                                .requestMatchers("/admin/users/**").hasAnyAuthority("ADMIN")
+                                                // Phân quyền API STAFF / ADMIN
+                                                .requestMatchers("/api/staff/**").hasAnyAuthority("STAFF", "ADMIN")
+                                                .requestMatchers("/api/admin/**").hasAuthority("ADMIN")
 
-                                                // Cấu hình phân quyền cho API
+                                                // Phân quyền chung
                                                 .requestMatchers(HttpMethod.GET, "/api/**")
                                                 .hasAnyAuthority("ADMIN", "USER", "STAFF")
                                                 .requestMatchers(HttpMethod.POST, "/api/**")
-                                                .hasAnyAuthority("ADMIN", "STAFF")
+                                                .hasAnyAuthority("STAFF", "ADMIN")
                                                 .requestMatchers(HttpMethod.PUT, "/api/**")
-                                                .hasAnyAuthority("ADMIN", "STAFF")
+                                                .hasAnyAuthority("STAFF", "ADMIN")
                                                 .requestMatchers(HttpMethod.DELETE, "/api/**")
-                                                .hasAnyAuthority("ADMIN", "STAFF")
+                                                .hasAnyAuthority("STAFF", "ADMIN")
 
-                                                // Phân quyền xem danh sách sách (Ai cũng xem được trừ guest nếu muốn, ở
-                                                // đây set authenticated)
+                                                // Thymeleaf URLs (Sẽ dần bỏ đi khi full API)
+                                                .requestMatchers("/books/edit/**", "/books/add", "/books/delete/**")
+                                                .hasAnyAuthority("STAFF", "ADMIN")
+                                                .requestMatchers("/staff/orders/**").hasAnyAuthority("STAFF", "ADMIN")
+                                                .requestMatchers("/admin/users/**").hasAuthority("ADMIN")
                                                 .requestMatchers("/books", "/cart", "/cart/**", "/orders/**")
                                                 .hasAnyAuthority("ADMIN", "USER", "STAFF")
 
-                                                .anyRequest().authenticated())
-                                .logout(logout -> logout
-                                                .logoutUrl("/logout")
-                                                .logoutSuccessUrl("/login")
-                                                .deleteCookies("JSESSIONID")
-                                                .invalidateHttpSession(true)
-                                                .clearAuthentication(true)
-                                                .permitAll())
-                                .formLogin(formLogin -> formLogin
-                                                .loginPage("/login")
-                                                .loginProcessingUrl("/login")
-                                                .defaultSuccessUrl("/", true)
-                                                .failureUrl("/login?error")
-                                                .permitAll())
-                                .oauth2Login(oauth2Login -> oauth2Login
-                                                .loginPage("/login")
-                                                .failureUrl("/login?error")
-                                                .userInfoEndpoint(userInfoEndpoint -> userInfoEndpoint
-                                                                .userService(oAuthService))
-                                                // Tích hợp Success Handler lưu người dùng OAuth vào DB
-                                                // Tích hợp Success Handler lưu người dùng OAuth vào DB
-                                                .successHandler((request, response, authentication) -> {
-                                                        var oauthUser = (org.springframework.security.oauth2.core.user.OAuth2User) authentication
-                                                                        .getPrincipal();
+                                                .anyRequest().authenticated());
 
-                                                        // Fallback logic for email (GitHub might not provide email, or
-                                                        // Google/Facebook differs)
-                                                        String email = oauthUser.getAttribute("email");
-                                                        String name = oauthUser.getAttribute("name");
+                // JWT Filter
+                http.addFilterBefore(authenticationJwtTokenFilter(), UsernamePasswordAuthenticationFilter.class);
 
-                                                        // GitHub fallback: if email is null, use login + @github.com
-                                                        // placeholder
-                                                        if (email == null && oauthUser.getAttribute("login") != null) {
-                                                                email = oauthUser.getAttribute("login").toString()
-                                                                                + "@github.com";
-                                                        }
-                                                        // General fallback
-                                                        if (email == null) {
-                                                                email = oauthUser.getName() + "@oauth.com";
-                                                        }
+                return http.build();
+        }
 
-                                                        // Ensure name is not null
-                                                        if (name == null) {
-                                                                name = oauthUser.getAttribute("login") != null
-                                                                                ? oauthUser.getAttribute("login")
-                                                                                                .toString()
-                                                                                : email;
-                                                        }
-
-                                                        // Get Provider (google, facebook, github)
-                                                        String provider = ((OAuth2AuthenticationToken) authentication)
-                                                                        .getAuthorizedClientRegistrationId();
-
-                                                        userService.saveOauthUser(email, name, provider);
-
-                                                        // --- FIX: Lấy user từ DB và cập nhật SecurityContext để có
-                                                        // quyền (Role) ---
-                                                        var dbUser = userService.findByEmail(email).orElse(null);
-                                                        if (dbUser != null) {
-                                                                var authorities = new ArrayList<GrantedAuthority>(
-                                                                                oauthUser.getAuthorities());
-                                                                dbUser.getRoles().forEach(role -> authorities
-                                                                                .add(new SimpleGrantedAuthority(
-                                                                                                role.getName())));
-
-                                                                var newToken = new OAuth2AuthenticationToken(oauthUser,
-                                                                                authorities,
-                                                                                ((OAuth2AuthenticationToken) authentication)
-                                                                                                .getAuthorizedClientRegistrationId());
-                                                                SecurityContextHolder.getContext()
-                                                                                .setAuthentication(newToken);
-                                                        }
-                                                        // -------------------------------------------------------------------------
-
-                                                        response.sendRedirect("/");
-                                                })
-                                                .permitAll())
-                                .rememberMe(rememberMe -> rememberMe
-                                                .key("hutech")
-                                                .rememberMeCookieName("hutech")
-                                                .tokenValiditySeconds(24 * 60 * 60)
-                                                .userDetailsService(userService))
-                                .exceptionHandling(exceptionHandling -> exceptionHandling
-                                                // Cấu hình trang lỗi 403 khi bị từ chối truy cập
-                                                .accessDeniedPage("/403"))
-                                .sessionManagement(sessionManagement -> sessionManagement
-                                                .maximumSessions(1)
-                                                .expiredUrl("/login"))
-                                .httpBasic(httpBasic -> httpBasic.realmName("hutech"))
-                                .build();
+        @Bean
+        public CorsConfigurationSource corsConfigurationSource() {
+                CorsConfiguration configuration = new CorsConfiguration();
+                configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000", "http://localhost:5173")); // URL
+                                                                                                                  // Frontend
+                configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+                configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Auth-Token"));
+                configuration.setExposedHeaders(Arrays.asList("x-auth-token"));
+                configuration.setAllowCredentials(true);
+                UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+                source.registerCorsConfiguration("/**", configuration);
+                return source;
         }
 }
