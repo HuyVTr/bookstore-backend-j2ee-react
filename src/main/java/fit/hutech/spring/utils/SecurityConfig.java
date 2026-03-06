@@ -4,7 +4,6 @@ import java.util.Arrays;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -51,41 +50,21 @@ public class SecurityConfig {
                 http.cors(cors -> cors.configurationSource(corsConfigurationSource()))
                                 .csrf(csrf -> csrf.disable())
                                 .exceptionHandling(exceptionHandling -> exceptionHandling
-                                                .authenticationEntryPoint(unauthorizedHandler)
-                                                .accessDeniedPage("/403"))
+                                                .authenticationEntryPoint(unauthorizedHandler))
                                 .sessionManagement(sessionManagement -> sessionManagement
                                                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                                 .authorizeHttpRequests(auth -> auth
-                                                // Cho phép truy cập công khai
-                                                .requestMatchers("/css/**", "/js/**", "/", "/oauth/**", "/register",
-                                                                "/error", "/images/**", "/login", "/api/auth/**")
-                                                .permitAll()
-
-                                                // Mở public GET api sách
-                                                .requestMatchers(HttpMethod.GET, "/api/public/books/**")
+                                                // Public endpoints
+                                                .requestMatchers("/api/auth/**", "/api/public/**", "/images/**")
                                                 .permitAll()
 
                                                 // Phân quyền API STAFF / ADMIN
                                                 .requestMatchers("/api/staff/**").hasAnyAuthority("STAFF", "ADMIN")
                                                 .requestMatchers("/api/admin/**").hasAuthority("ADMIN")
 
-                                                // Phân quyền chung
-                                                .requestMatchers(HttpMethod.GET, "/api/**")
-                                                .hasAnyAuthority("ADMIN", "USER", "STAFF")
-                                                .requestMatchers(HttpMethod.POST, "/api/**")
-                                                .hasAnyAuthority("STAFF", "ADMIN")
-                                                .requestMatchers(HttpMethod.PUT, "/api/**")
-                                                .hasAnyAuthority("STAFF", "ADMIN")
-                                                .requestMatchers(HttpMethod.DELETE, "/api/**")
-                                                .hasAnyAuthority("STAFF", "ADMIN")
-
-                                                // Thymeleaf URLs (Sẽ dần bỏ đi khi full API)
-                                                .requestMatchers("/books/edit/**", "/books/add", "/books/delete/**")
-                                                .hasAnyAuthority("STAFF", "ADMIN")
-                                                .requestMatchers("/staff/orders/**").hasAnyAuthority("STAFF", "ADMIN")
-                                                .requestMatchers("/admin/users/**").hasAuthority("ADMIN")
-                                                .requestMatchers("/books", "/cart", "/cart/**", "/orders/**")
-                                                .hasAnyAuthority("ADMIN", "USER", "STAFF")
+                                                // API chung yêu cầu đăng nhập
+                                                .requestMatchers("/api/cart/**", "/api/order/**", "/api/profile/**")
+                                                .authenticated()
 
                                                 .anyRequest().authenticated());
 
