@@ -10,10 +10,10 @@
         <relativePath />
     </parent>
     <groupId>fit.hutech</groupId>
-    <artifactId>spring</artifactId>
+    <artifactId>bookstore-backend-j2ee-react</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>spring</name>
-    <description>Thực hành lập trình ứng dụng với Java</description>
+    <name>bookstore-backend-j2ee-react</name>
+    <description>Bookstore Backend - J2EE React Project</description>
     <url />
     <licenses>
         <license />
