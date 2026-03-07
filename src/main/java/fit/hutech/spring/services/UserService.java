@@ -22,9 +22,9 @@ public class UserService implements UserDetailsService {
     private final IRoleRepository roleRepository;
 
     @Override
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        return userRepository.findByUsername(username)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+    public UserDetails loadUserByUsername(String loginId) throws UsernameNotFoundException {
+        return userRepository.findByUsernameOrEmail(loginId, loginId)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with username or email: " + loginId));
     }
 
     public Optional<User> findByUsername(String username) {

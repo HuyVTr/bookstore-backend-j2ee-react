@@ -6,7 +6,6 @@ import java.util.Objects;
 import java.util.Set;
 
 import org.hibernate.Hibernate;
-import org.hibernate.validator.constraints.Length;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -24,7 +23,6 @@ import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -47,9 +45,9 @@ public class User implements UserDetails {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "username", length = 50, unique = true)
+    @Column(name = "username", length = 150, unique = true)
     @NotBlank(message = "Username is required")
-    @Size(min = 1, max = 50, message = "Username must be between 1 and 50 characters")
+    @Size(min = 1, max = 150, message = "Username must be between 1 and 150 characters")
     @ValidUsername
     private String username;
 
@@ -57,15 +55,13 @@ public class User implements UserDetails {
     @NotBlank(message = "Password is required")
     private String password;
 
-    @Column(name = "email", length = 50, unique = true)
+    @Column(name = "email", length = 150, unique = true)
     @NotBlank(message = "Email is required")
-    @Size(min = 1, max = 50, message = "Email must be between 1 and 50 characters")
+    @Size(min = 1, max = 150, message = "Email must be between 1 and 150 characters")
     @Email
     private String email;
 
     @Column(name = "phone", length = 10, unique = true)
-    @Length(min = 10, max = 10, message = "Phone must be 10 characters")
-    @Pattern(regexp = "^[0-9]*$", message = "Phone must be number")
     private String phone;
 
     @Column(name = "provider", length = 50)
@@ -84,7 +80,7 @@ public class User implements UserDetails {
 
     @Column(name = "is_active")
     @Builder.Default
-    private boolean isActive = true;
+    private Boolean active = true;
 
     // Tích hợp thay đổi phương thức getAuthorities() từ hình ảnh
     @Override
@@ -122,7 +118,7 @@ public class User implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return isActive;
+        return active != null && active;
     }
 
     @Override

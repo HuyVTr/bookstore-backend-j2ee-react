@@ -50,6 +50,9 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             user = userOptional.get();
             user.setFullName(name);
             user.setProvider(provider);
+            if (user.getActive() == null) {
+                user.setActive(true);
+            }
             userRepository.save(user);
         } else {
             user = registerNewUser(provider, email, name);

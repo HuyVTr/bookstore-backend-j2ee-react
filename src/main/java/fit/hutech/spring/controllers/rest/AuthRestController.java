@@ -76,9 +76,6 @@ public class AuthRestController {
         if (userService.findByEmail(user.getEmail()).isPresent()) {
             return ResponseEntity.badRequest().body("Error: Email is already taken!");
         }
-        if (userService.findByPhone(user.getPhone()).isPresent()) {
-            return ResponseEntity.badRequest().body("Error: Phone number is already taken!");
-        }
 
         // Mã hóa mật khẩu và lưu
         user.setPassword(passwordEncoder.encode(user.getPassword()));
