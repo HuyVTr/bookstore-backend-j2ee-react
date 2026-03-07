@@ -18,8 +18,10 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import fit.hutech.spring.security.CustomOAuth2UserService;
 import fit.hutech.spring.security.JwtAuthEntryPoint;
 import fit.hutech.spring.security.JwtAuthTokenFilter;
+import fit.hutech.spring.security.OAuth2AuthenticationSuccessHandler;
 import lombok.RequiredArgsConstructor;
 
 @Configuration
@@ -29,6 +31,8 @@ import lombok.RequiredArgsConstructor;
 public class SecurityConfig {
 
         private final JwtAuthEntryPoint unauthorizedHandler;
+        private final CustomOAuth2UserService customOAuth2UserService;
+        private final OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
 
         @Bean
         public JwtAuthTokenFilter authenticationJwtTokenFilter() {
@@ -55,7 +59,8 @@ public class SecurityConfig {
                                                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                                 .authorizeHttpRequests(auth -> auth
                                                 // Public endpoints
-                                                .requestMatchers("/api/auth/**", "/api/public/**", "/images/**")
+                                                .requestMatchers("/api/auth/**", "/api/public/**", "/images/**",
+                                                                "/oauth2/**")
                                                 .permitAll()
 
                                                 // Phân quyền API STAFF / ADMIN
@@ -66,7 +71,11 @@ public class SecurityConfig {
                                                 .requestMatchers("/api/cart/**", "/api/order/**", "/api/profile/**")
                                                 .authenticated()
 
-                                                .anyRequest().authenticated());
+                                                .anyRequest().authenticated())
+                                .oauth2Login(oauth2 -> oauth2
+                                                .userInfoEndpoint(userInfo -> userInfo
+                                                                .userService(customOAuth2UserService))
+                                                .successHandler(oAuth2AuthenticationSuccessHandler));
 
                 // JWT Filter
                 http.addFilterBefore(authenticationJwtTokenFilter(), UsernamePasswordAuthenticationFilter.class);
