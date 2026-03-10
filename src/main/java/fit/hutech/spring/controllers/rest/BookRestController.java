@@ -22,6 +22,8 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import fit.hutech.spring.dtos.AuthorSalesDTO;
+import fit.hutech.spring.dtos.CategorySalesDTO;
 import fit.hutech.spring.entities.Book;
 import fit.hutech.spring.entities.Category;
 import fit.hutech.spring.services.BookService;
@@ -33,9 +35,39 @@ public class BookRestController {
 
     private final BookService bookService;
 
-    // ==========================================
-    // PUBLIC APIS (Guests and Users)
-    // ==========================================
+    @GetMapping("/api/public/authors/top-selling")
+    public ResponseEntity<java.util.List<AuthorSalesDTO>> getTopSellingAuthors(
+            @RequestParam(defaultValue = "5") int limit) {
+        return ResponseEntity.ok(bookService.getTopSellingAuthors(limit));
+    }
+
+    @GetMapping("/api/public/books/featured")
+    public ResponseEntity<java.util.List<Book>> getFeaturedBooks() {
+        return ResponseEntity.ok(bookService.getFeaturedBooks());
+    }
+
+    @GetMapping("/api/public/books/on-sale")
+    public ResponseEntity<java.util.List<Book>> getOnSaleBooks() {
+        return ResponseEntity.ok(bookService.getOnSaleBooks());
+    }
+
+    @GetMapping("/api/public/books/most-viewed")
+    public ResponseEntity<java.util.List<Book>> getMostViewedBooks() {
+        return ResponseEntity.ok(bookService.getMostViewedBooks());
+    }
+
+    @GetMapping("/api/public/books/best-seller")
+    public ResponseEntity<?> getBestSeller() {
+        Book bestSeller = bookService.getBestSellingBook();
+        if (bestSeller == null)
+            return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(bestSeller);
+    }
+
+    @GetMapping("/api/public/categories/top-selling")
+    public ResponseEntity<java.util.List<fit.hutech.spring.dtos.CategorySalesDTO>> getTopSellingCategories() {
+        return ResponseEntity.ok(bookService.getTopSellingCategories(5));
+    }
 
     @GetMapping("/api/public/books")
     public ResponseEntity<?> getAllBooks(

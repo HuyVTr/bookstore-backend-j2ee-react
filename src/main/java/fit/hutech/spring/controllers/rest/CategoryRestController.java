@@ -48,6 +48,7 @@ public class CategoryRestController {
     public ResponseEntity<Category> updateCategory(@PathVariable Long id, @RequestBody Category categoryUpdates) {
         return categoryRepository.findById(id).map(existingCategory -> {
             existingCategory.setName(categoryUpdates.getName());
+            existingCategory.setIcon(categoryUpdates.getIcon());
             Category updatedCategory = categoryRepository.save(existingCategory);
             return ResponseEntity.ok(updatedCategory);
         }).orElse(ResponseEntity.notFound().build());

@@ -28,4 +28,20 @@ public interface IBookRepository extends JpaRepository<Book, Long> {
             """)
     List<Book> searchBook(String keyword);
     // =============================================================
+
+    // TOP 4 Sách Nổi Bật (Có thể Staff bật tắt bằng isFeatured)
+    List<Book> findTop4ByIsFeaturedTrueOrderByTotalSoldDesc();
+
+    // TOP 4 Sách Đang Giảm Giá
+    List<Book> findTop4ByIsOnSaleTrueOrderByDiscountPriceAsc();
+
+    // TOP 4 Sách Xem Nhiều Nhất
+    List<Book> findTop4ByOrderByViewCountDesc();
+
+    // === BỔ SUNG CHO DI CƯ DỮ LIỆU ===
+    List<Book> findByCategoryId(Long categoryId);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Query("UPDATE Book b SET b.category = ?1 WHERE b.category.id = ?2")
+    void updateCategoryForBooks(fit.hutech.spring.entities.Category newCategory, Long oldCategoryId);
 }

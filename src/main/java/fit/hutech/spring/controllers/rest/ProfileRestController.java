@@ -54,6 +54,13 @@ public class ProfileRestController {
             return ResponseEntity.status(404).body("User not found");
         }
 
+        // Kiểm tra số điện thoại trùng lặp (nếu có thay đổi)
+        if (updatedUser.getPhone() != null && !updatedUser.getPhone().equals(currentUser.getPhone())) {
+            if (userService.findByPhone(updatedUser.getPhone()).isPresent()) {
+                return ResponseEntity.badRequest().body("Số điện thoại đã được sử dụng bởi người dùng khác!");
+            }
+        }
+
         currentUser.setFullName(updatedUser.getFullName());
         currentUser.setPhone(updatedUser.getPhone());
         currentUser.setAddress(updatedUser.getAddress());

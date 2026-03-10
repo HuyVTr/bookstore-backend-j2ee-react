@@ -66,6 +66,25 @@ public class Book {
     @ToString.Exclude
     private Category category;
 
+    @Column(name = "is_featured")
+    @Builder.Default
+    private Boolean isFeatured = false;
+
+    @Column(name = "is_on_sale")
+    @Builder.Default
+    private Boolean isOnSale = false;
+
+    @Column(name = "discount_price")
+    private Double discountPrice;
+
+    @Column(name = "view_count")
+    @Builder.Default
+    private Integer viewCount = 0;
+
+    @Column(name = "total_sold")
+    @Builder.Default
+    private Integer totalSold = 0;
+
     @Override
     public boolean equals(Object o) {
         if (this == o)

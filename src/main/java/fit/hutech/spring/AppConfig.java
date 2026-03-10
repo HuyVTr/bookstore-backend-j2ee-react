@@ -44,7 +44,7 @@ public class AppConfig implements WebMvcConfigurer {
         locations.add("file:spring/uploads/");
         locations.add("file:uploads/");
 
-        registry.addResourceHandler("/images/books/**")
+        registry.addResourceHandler("/images/**")
                 .addResourceLocations(locations.toArray(new String[0]));
     }
 }
