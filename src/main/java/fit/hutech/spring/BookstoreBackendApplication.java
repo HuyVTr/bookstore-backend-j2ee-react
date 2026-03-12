@@ -28,33 +28,17 @@ public class BookstoreBackendApplication {
             if (roleRepository.findByName("STAFF") == null) {
                 roleRepository.save(new fit.hutech.spring.entities.Role(null, "STAFF", null, null));
             }
-
-            // === SEEDING AUTHOR METADATA ===
-            String[][] initialAuthors = {
-                    { "Nguyễn Nhật Ánh",
-                            "https://i1-giaitri.vnecdn.net/2023/09/21/nguyen-nhat-anh-1-1695286576.jpg?w=1200&h=0&q=100&dpr=1&fit=crop&s=7W3Xp6p7z99-6_eFp6_G_g" },
-                    { "J.K. Rowling",
-                            "https://i.guim.co.uk/img/media/0675239a0669f7e52b2b1d318e8d89e09d172e27/0_569_4800_2880/master/4800.jpg?width=1200&height=1200&quality=85&auto=format&fit=crop&s=8e4e766e4a6a57e3f8a4e8e8e8e8e8e8" },
-                    { "Paulo Coelho", "https://upload.wikimedia.org/wikipedia/commons/0/0b/Paulo_Coelho_2013.jpg" },
-                    { "Napoleon Hill", "https://upload.wikimedia.org/wikipedia/commons/c/c3/Napoleon_Hill_1904.jpg" },
-                    { "Dale Carnegie", "https://upload.wikimedia.org/wikipedia/commons/2/23/Dale_Carnegie.jpg" }
-            };
-
-            for (String[] author : initialAuthors) {
-                if (authorRepository.findByName(author[0]).isEmpty()) {
-                    authorRepository.save(fit.hutech.spring.entities.Author.builder()
-                            .name(author[0])
-                            .avatarPath(author[1])
-                            .build());
-                }
+            if (roleRepository.findByName("AUTHOR") == null) {
+                roleRepository.save(new fit.hutech.spring.entities.Role(null, "AUTHOR", null, null));
             }
 
             // === DATABASE MIGRATION: RESTRUCTURING CATEGORIES ===
             // Chạy logic di cư thông qua Service để đảm bảo có Transaction
             try {
                 bookService.migrateCategories(categoryRepository);
+                bookService.syncAuthorsMetadata(); // Đồng bộ tác giả hiện có vào metadata table
             } catch (Exception e) {
-                System.err.println("Migration error: " + e.getMessage());
+                System.err.println("Database migration failed: " + e.getMessage());
             }
 
             // Initializing Remaining Category Icons (Icon Database concept)

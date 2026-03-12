@@ -23,6 +23,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
+import org.hibernate.annotations.CreationTimestamp;
+import java.time.LocalDateTime;
 
 @Getter
 @Setter
@@ -84,6 +86,14 @@ public class Book {
     @Column(name = "total_sold")
     @Builder.Default
     private Integer totalSold = 0;
+
+    @Column(name = "book_source")
+    @Builder.Default
+    private String bookSource = "OFFICIAL"; // "OFFICIAL" or "AUTHOR"
+
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = true, updatable = false)
+    private LocalDateTime createdAt;
 
     @Override
     public boolean equals(Object o) {

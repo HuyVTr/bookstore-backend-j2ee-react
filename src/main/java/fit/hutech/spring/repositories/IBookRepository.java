@@ -35,6 +35,9 @@ public interface IBookRepository extends JpaRepository<Book, Long> {
     // TOP 4 Sách Đang Giảm Giá
     List<Book> findTop4ByIsOnSaleTrueOrderByDiscountPriceAsc();
 
+    // TOP 20 Sách Mới Nhất (Sắp xếp theo ID giảm dần - ID lớn nhất là sách vừa thêm mới nhất)
+    List<Book> findTop20ByOrderByIdDesc();
+
     // TOP 4 Sách Xem Nhiều Nhất
     List<Book> findTop4ByOrderByViewCountDesc();
 

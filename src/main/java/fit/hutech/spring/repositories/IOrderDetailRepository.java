@@ -19,7 +19,7 @@ public interface IOrderDetailRepository extends JpaRepository<OrderDetail, Long>
                         "FROM OrderDetail d JOIN d.book b GROUP BY b.category ORDER BY SUM(d.quantity) DESC")
         java.util.List<Object[]> findTopSellingCategoriesRaw(org.springframework.data.domain.Pageable pageable);
 
-        @org.springframework.data.jpa.repository.Query("SELECT new fit.hutech.spring.dtos.AuthorSalesDTO(b.author, SUM(d.quantity), '') "
+        @org.springframework.data.jpa.repository.Query("SELECT new fit.hutech.spring.dtos.AuthorSalesDTO(b.author, SUM(d.quantity), '', 0L) "
                         +
                         "FROM OrderDetail d JOIN d.book b GROUP BY b.author ORDER BY SUM(d.quantity) DESC")
         java.util.List<fit.hutech.spring.dtos.AuthorSalesDTO> findTopSellingAuthors(

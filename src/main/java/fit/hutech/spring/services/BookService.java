@@ -42,16 +42,26 @@ public class BookService {
     }
 
     public java.util.List<fit.hutech.spring.dtos.AuthorSalesDTO> getTopSellingAuthors(int limit) {
+        // 1. Lấy map đếm số lượng sách của từng tác giả để gán vào DTO
+        java.util.Map<String, Long> authorBookCount = bookRepository.findAll().stream()
+                .filter(b -> b.getAuthor() != null)
+                .collect(java.util.stream.Collectors.groupingBy(Book::getAuthor,
+                        java.util.stream.Collectors.counting()));
+
         var topAuthors = orderDetailRepository.findTopSellingAuthors(PageRequest.of(0, limit));
 
         if (topAuthors.isEmpty()) {
-            // Fallback: Lấy các tác giả từ danh sách sách nếu chưa có lượt bán
-            topAuthors = bookRepository.findAll().stream()
-                    .map(b -> b.getAuthor())
-                    .distinct()
+            // Fallback: Lấy các tác giả có nhiều sách nhất trong shop
+            topAuthors = authorBookCount.entrySet().stream()
+                    .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
                     .limit(limit)
-                    .map(name -> new fit.hutech.spring.dtos.AuthorSalesDTO(name, 0L, ""))
+                    .map(entry -> new fit.hutech.spring.dtos.AuthorSalesDTO(entry.getKey(), 0L, "", entry.getValue()))
                     .collect(java.util.stream.Collectors.toList());
+        } else {
+            // Cập nhật số lượng sách cho các tác giả có lượt bán
+            for (var authorDTO : topAuthors) {
+                authorDTO.setBookCount(authorBookCount.getOrDefault(authorDTO.getAuthorName(), 0L));
+            }
         }
 
         // Ánh xạ Avatar từ Author metadata
@@ -73,6 +83,7 @@ public class BookService {
     }
 
     public void addBook(Book book) {
+        ensureAuthorMetadataExists(book.getAuthor());
         bookRepository.save(book);
     }
 
@@ -81,6 +92,7 @@ public class BookService {
                 .orElse(null);
 
         if (existingBook != null) {
+            ensureAuthorMetadataExists(book.getAuthor());
             existingBook.setTitle(book.getTitle());
             existingBook.setAuthor(book.getAuthor());
             existingBook.setPrice(book.getPrice());
@@ -95,12 +107,40 @@ public class BookService {
         }
     }
 
+    private void ensureAuthorMetadataExists(String authorName) {
+        if (authorName == null || authorName.isBlank())
+            return;
+        if (authorRepository.findByName(authorName).isEmpty()) {
+            authorRepository.save(fit.hutech.spring.entities.Author.builder()
+                    .name(authorName)
+                    .avatarPath("") // Trống để frontend dùng placeholder
+                    .bio("Thông tin tác giả đang được cập nhật...")
+                    .build());
+            System.out.println("Auto-created metadata for author: " + authorName);
+        }
+    }
+
     public void deleteBookById(Long id) {
         bookRepository.deleteById(id);
     }
 
     public long countAllBooks() {
         return bookRepository.count();
+    }
+
+    // === BỔ SUNG: Đồng bộ Metadata cho các tác giả cũ đã có trong DB ===
+    @Transactional
+    public void syncAuthorsMetadata() {
+        List<String> uniqueAuthors = bookRepository.findAll().stream()
+                .map(Book::getAuthor)
+                .filter(name -> name != null && !name.isBlank())
+                .distinct()
+                .toList();
+
+        for (String name : uniqueAuthors) {
+            ensureAuthorMetadataExists(name);
+        }
+        System.out.println("Sync completed: Checked " + uniqueAuthors.size() + " unique authors.");
     }
 
     // === BỔ SUNG: Phương thức tìm kiếm theo ảnh image_e6d09d.png ===
@@ -159,6 +199,10 @@ public class BookService {
             return bookRepository.findAll(PageRequest.of(0, 4)).getContent();
         }
         return mostViewed;
+    }
+
+    public List<Book> getNewestBooks() {
+        return bookRepository.findTop20ByOrderByIdDesc();
     }
 
     // === DI CƯ DỮ LIỆU DANH MỤC (XỬ LÝ TRANSACTION) ===

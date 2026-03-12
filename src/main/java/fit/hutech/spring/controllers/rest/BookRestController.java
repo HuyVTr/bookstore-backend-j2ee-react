@@ -56,6 +56,11 @@ public class BookRestController {
         return ResponseEntity.ok(bookService.getMostViewedBooks());
     }
 
+    @GetMapping("/api/public/books/newest")
+    public ResponseEntity<java.util.List<Book>> getNewestBooks() {
+        return ResponseEntity.ok(bookService.getNewestBooks());
+    }
+
     @GetMapping("/api/public/books/best-seller")
     public ResponseEntity<?> getBestSeller() {
         Book bestSeller = bookService.getBestSellingBook();

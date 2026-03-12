@@ -10,5 +10,6 @@ import lombok.NoArgsConstructor;
 public class AuthorSalesDTO {
     private String authorName;
     private Long totalSold;
-    private String authorImage; // Placeholder for now, can be updated later
+    private String authorImage;
+    private Long bookCount;
 }
