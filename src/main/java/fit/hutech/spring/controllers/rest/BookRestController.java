@@ -33,7 +33,13 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class BookRestController {
 
+    private final fit.hutech.spring.repositories.ICategoryRepository categoryRepository;
     private final BookService bookService;
+
+    @GetMapping("/api/public/categories")
+    public ResponseEntity<?> getAllCategories() {
+        return ResponseEntity.ok(categoryRepository.findAll());
+    }
 
     @GetMapping("/api/public/authors/top-selling")
     public ResponseEntity<java.util.List<AuthorSalesDTO>> getTopSellingAuthors(
@@ -78,15 +84,75 @@ public class BookRestController {
     public ResponseEntity<?> getAllBooks(
             @RequestParam(defaultValue = "0") Integer pageNo,
             @RequestParam(defaultValue = "20") Integer pageSize,
-            @RequestParam(defaultValue = "id") String sortBy) {
+            @RequestParam(defaultValue = "id") String sortBy,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) Double minPrice,
+            @RequestParam(required = false) Double maxPrice,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false, defaultValue = "false") Boolean saleOnly) {
+
+        // Mapping sortBy from frontend values to JPA fields
+        String sortField = "id";
+        org.springframework.data.domain.Sort.Direction direction = org.springframework.data.domain.Sort.Direction.DESC;
+
+        if ("price_asc".equals(sortBy)) {
+            sortField = "price";
+            direction = org.springframework.data.domain.Sort.Direction.ASC;
+        } else if ("price_desc".equals(sortBy)) {
+            sortField = "price";
+            direction = org.springframework.data.domain.Sort.Direction.DESC;
+        } else if ("popular".equals(sortBy)) {
+            sortField = "totalSold";
+            direction = org.springframework.data.domain.Sort.Direction.DESC;
+        } else if ("newest".equals(sortBy)) {
+            sortField = "id"; // Or "createdAt"
+            direction = org.springframework.data.domain.Sort.Direction.DESC;
+        }
+
+        // For simplicity and to respond quickly to "rót dữ liệu", 
+        // we'll fetch all and filter in memory if filters are active, 
+        // but it's better to use repository methods. 
+        // Let's use a basic filtering logic here.
+        
+        java.util.List<Book> allBooks = bookService.getAllBooks(0, Integer.MAX_VALUE, sortField);
+        if (direction == org.springframework.data.domain.Sort.Direction.DESC) {
+            // Handled by repository if it supports Direction, but IBookRepository's findAllBooks is hardcoded to use sortBy
+        }
+
+        // Filtering
+        var filteredStream = allBooks.stream();
+        if (category != null && !category.isBlank()) {
+            filteredStream = filteredStream.filter(b -> b.getCategory() != null && b.getCategory().getName().equalsIgnoreCase(category));
+        }
+        if (minPrice != null) {
+            filteredStream = filteredStream.filter(b -> b.getPrice() >= minPrice);
+        }
+        if (maxPrice != null) {
+            filteredStream = filteredStream.filter(b -> b.getPrice() <= maxPrice);
+        }
+        if (search != null && !search.isBlank()) {
+            String kw = search.toLowerCase();
+            filteredStream = filteredStream.filter(b -> (b.getTitle() != null && b.getTitle().toLowerCase().contains(kw)) ||
+                                                       (b.getAuthor() != null && b.getAuthor().toLowerCase().contains(kw)));
+        }
+        if (Boolean.TRUE.equals(saleOnly)) {
+            System.out.println("DEBUG: Filtering sale books only. total before: " + allBooks.size());
+            filteredStream = filteredStream.filter(b -> b.getIsOnSale() != null && b.getIsOnSale());
+        }
+
+        java.util.List<Book> filteredBooks = filteredStream.collect(java.util.stream.Collectors.toList());
+        int totalItems = filteredBooks.size();
+        
+        // Manual Pagination
+        int start = pageNo * pageSize;
+        int end = Math.min(start + pageSize, totalItems);
+        java.util.List<Book> pagedBooks = (start < totalItems) ? filteredBooks.subList(start, end) : new java.util.ArrayList<>();
 
         Map<String, Object> response = new HashMap<>();
-        response.put("books", bookService.getAllBooks(pageNo, pageSize, sortBy));
+        response.put("books", pagedBooks);
         response.put("currentPage", pageNo);
-
-        long totalBooks = bookService.countAllBooks();
-        response.put("totalPages", totalBooks > 0 ? (int) Math.ceil((double) totalBooks / pageSize) - 1 : 0);
-        response.put("totalItems", totalBooks);
+        response.put("totalItems", (long)totalItems);
+        response.put("totalPages", totalItems > 0 ? (int) Math.ceil((double) totalItems / pageSize) - 1 : 0);
 
         return ResponseEntity.ok(response);
     }

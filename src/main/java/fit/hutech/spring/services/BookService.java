@@ -155,6 +155,28 @@ public class BookService {
                                 && book.getCategory().getName().toLowerCase().contains(finalKeyword)))
                 .toList();
     }
+
+    // === BỔ SUNG: Đồng bộ số lượng đã bán từ OrderDetail vào Book ===
+    @Transactional
+    public void syncSoldCounts() {
+        // 1. Reset toàn bộ totalSold về 0 để xóa dữ liệu rác/random cũ
+        bookRepository.findAll().forEach(book -> {
+            book.setTotalSold(0);
+            bookRepository.save(book);
+        });
+
+        // 2. Lấy dữ liệu bán hàng thực tế từ bảng OrderDetail
+        var salesData = orderDetailRepository.findTopSellingBooks(PageRequest.of(0, Integer.MAX_VALUE));
+        
+        // 3. Cập nhật lại số lượng bán cho các sách thực sự có đơn hàng
+        for (var dto : salesData) {
+            Book book = dto.getBook();
+            book.setTotalSold(dto.getTotalSold().intValue());
+            bookRepository.save(book);
+        }
+        System.out.println("Sync completed: Reset all to 0 and updated real sales for " + salesData.size() + " books.");
+    }
+    // ===============================================================
     // ===============================================================
 
     // === Cập nhật số lượng sách (Nhập/Xuất kho) ===

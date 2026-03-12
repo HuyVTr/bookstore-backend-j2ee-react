@@ -99,6 +99,63 @@ public class BookstoreBackendApplication {
                     categoryRepository.save(cat);
                 }
             }
+
+            // 3. Initializing Sample Books if Database is empty
+            if (bookRepository.count() == 0) {
+                fit.hutech.spring.entities.Category literature = categoryRepository.findByName("Văn học");
+                fit.hutech.spring.entities.Category tech = categoryRepository.findByName("Lập Trình");
+                fit.hutech.spring.entities.Category business = categoryRepository.findByName("Kinh doanh");
+                fit.hutech.spring.entities.Category lifestyle = categoryRepository.findByName("Nghệ thuật");
+
+                java.util.Random random = new java.util.Random();
+                Object[][] sampleBooks = {
+                        { "Dế Mèn Phiêu Lưu Ký", "Tô Hoài", 45000.0, literature,
+                                "https://images.unsplash.com/photo-1544947950-fa07a98d237f?q=80&w=400" },
+                        { "Java Design Patterns", "Erich Gamma", 125000.0, tech,
+                                "https://images.unsplash.com/photo-1587620962725-abab7fe55159?q=80&w=400" },
+                        { "Rich Dad Poor Dad", "Robert Kiyosaki", 89000.0, business,
+                                "https://images.unsplash.com/photo-1592492159418-39f319320569?q=80&w=400" },
+                        { "The Art of War", "Sun Tzu", 55000.0, business,
+                                "https://images.unsplash.com/photo-1512820790803-83ca734da794?q=80&w=400" },
+                        { "Clean Code", "Robert C. Martin", 150000.0, tech,
+                                "https://images.unsplash.com/photo-1516116216624-53e697fedbea?q=80&w=400" },
+                        { "Mắt Biếc", "Nguyễn Nhật Ánh", 65000.0, literature,
+                                "https://images.unsplash.com/photo-1541963463532-d68292c34b19?q=80&w=400" },
+                        { "Digital Minimalism", "Cal Newport", 95000.0, lifestyle,
+                                "https://images.unsplash.com/photo-1491841573634-28140fc7ced7?q=80&w=400" },
+                        { "Bố Già (The Godfather)", "Mario Puzo", 110000.0, literature,
+                                "https://images.unsplash.com/photo-1531243269054-5ebf6f3ad0e6?q=80&w=400" },
+                        { "Sapiens", "Yuval Noah Harari", 135000.0, business,
+                                "https://images.unsplash.com/photo-1543004218-ee141104975e?q=80&w=400" },
+                        { "Deep Work", "Cal Newport", 99000.0, lifestyle,
+                                "https://images.unsplash.com/photo-1515378791036-0648a3ef77b2?q=80&w=400" }
+                };
+
+                for (Object[] b : sampleBooks) {
+                    fit.hutech.spring.entities.Book book = new fit.hutech.spring.entities.Book();
+                    book.setTitle((String) b[0]);
+                    book.setAuthor((String) b[1]);
+                    book.setPrice((Double) b[2]);
+                    book.setCategory((fit.hutech.spring.entities.Category) b[3]);
+                    book.setImagePath((String) b[4]);
+                    book.setIsFeatured(true);
+                    book.setIsOnSale(random.nextBoolean());
+                    book.setDiscountPrice(book.getPrice() * 0.85);
+                    book.setViewCount(random.nextInt(2000));
+                    book.setTotalSold(0);
+                    book.setQuantity(50);
+                    book.setBookSource(random.nextBoolean() ? "OFFICIAL" : "AUTHOR");
+                    bookService.addBook(book);
+                }
+                System.out.println("Seed data: Added " + sampleBooks.length + " sample books with Unsplash covers.");
+            }
+            
+            // 🔥 QUAN TRỌNG: Đồng bộ số lượng bán từ hóa đơn thực tế trong MySQL
+            // (Xóa bỏ hoàn toàn việc rót số liệu random tào lao)
+            bookService.syncSoldCounts();
+            
+            // Đồng bộ lại author metadata cho chắc chắn
+            bookService.syncAuthorsMetadata();
         };
     }
 }

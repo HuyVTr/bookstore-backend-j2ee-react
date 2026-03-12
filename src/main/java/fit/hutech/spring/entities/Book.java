@@ -83,6 +83,7 @@ public class Book {
     @Builder.Default
     private Integer viewCount = 0;
 
+    @com.fasterxml.jackson.annotation.JsonProperty("totalSold")
     @Column(name = "total_sold")
     @Builder.Default
     private Integer totalSold = 0;

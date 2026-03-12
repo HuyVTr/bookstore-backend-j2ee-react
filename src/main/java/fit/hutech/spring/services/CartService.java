@@ -174,8 +174,13 @@ public class CartService {
             orderDetail.setQuantity(item.getQuantity());
             orderDetail.setPrice(item.getPrice());
 
-            // Tìm sách theo ID
-            orderDetail.setBook(bookRepository.findById(item.getBookId()).orElseThrow());
+            // Tìm sách theo ID và cập nhật lượt bán
+            fit.hutech.spring.entities.Book book = bookRepository.findById(item.getBookId()).orElseThrow();
+            orderDetail.setBook(book);
+            
+            int soldCount = (book.getTotalSold() != null ? book.getTotalSold() : 0) + item.getQuantity();
+            book.setTotalSold(soldCount);
+            bookRepository.save(book);
 
             orderDetailRepository.save(orderDetail);
         });
