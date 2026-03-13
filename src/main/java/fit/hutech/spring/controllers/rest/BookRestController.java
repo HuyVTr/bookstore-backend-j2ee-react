@@ -8,23 +8,17 @@ import java.nio.file.StandardCopyOption;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.ArrayList;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RequestPart;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import fit.hutech.spring.dtos.AuthorSalesDTO;
 import fit.hutech.spring.dtos.CategorySalesDTO;
 import fit.hutech.spring.entities.Book;
+import fit.hutech.spring.entities.BookImage;
 import fit.hutech.spring.entities.Category;
 import fit.hutech.spring.services.BookService;
 import lombok.RequiredArgsConstructor;
@@ -91,7 +85,6 @@ public class BookRestController {
             @RequestParam(required = false) String search,
             @RequestParam(required = false, defaultValue = "false") Boolean saleOnly) {
 
-        // Mapping sortBy from frontend values to JPA fields
         String sortField = "id";
         org.springframework.data.domain.Sort.Direction direction = org.springframework.data.domain.Sort.Direction.DESC;
 
@@ -105,21 +98,12 @@ public class BookRestController {
             sortField = "totalSold";
             direction = org.springframework.data.domain.Sort.Direction.DESC;
         } else if ("newest".equals(sortBy)) {
-            sortField = "id"; // Or "createdAt"
+            sortField = "id";
             direction = org.springframework.data.domain.Sort.Direction.DESC;
         }
 
-        // For simplicity and to respond quickly to "rót dữ liệu", 
-        // we'll fetch all and filter in memory if filters are active, 
-        // but it's better to use repository methods. 
-        // Let's use a basic filtering logic here.
-        
         java.util.List<Book> allBooks = bookService.getAllBooks(0, Integer.MAX_VALUE, sortField);
-        if (direction == org.springframework.data.domain.Sort.Direction.DESC) {
-            // Handled by repository if it supports Direction, but IBookRepository's findAllBooks is hardcoded to use sortBy
-        }
-
-        // Filtering
+        
         var filteredStream = allBooks.stream();
         if (category != null && !category.isBlank()) {
             filteredStream = filteredStream.filter(b -> b.getCategory() != null && b.getCategory().getName().equalsIgnoreCase(category));
@@ -136,14 +120,12 @@ public class BookRestController {
                                                        (b.getAuthor() != null && b.getAuthor().toLowerCase().contains(kw)));
         }
         if (Boolean.TRUE.equals(saleOnly)) {
-            System.out.println("DEBUG: Filtering sale books only. total before: " + allBooks.size());
             filteredStream = filteredStream.filter(b -> b.getIsOnSale() != null && b.getIsOnSale());
         }
 
         java.util.List<Book> filteredBooks = filteredStream.collect(java.util.stream.Collectors.toList());
         int totalItems = filteredBooks.size();
         
-        // Manual Pagination
         int start = pageNo * pageSize;
         int end = Math.min(start + pageSize, totalItems);
         java.util.List<Book> pagedBooks = (start < totalItems) ? filteredBooks.subList(start, end) : new java.util.ArrayList<>();
@@ -183,10 +165,6 @@ public class BookRestController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // ==========================================
-    // STAFF / ADMIN APIS
-    // ==========================================
-
     @PostMapping("/api/staff/books")
     public ResponseEntity<?> addBook(
             @RequestParam("title") String title,
@@ -194,13 +172,28 @@ public class BookRestController {
             @RequestParam("price") Double price,
             @RequestParam("categoryId") Long categoryId,
             @RequestParam(value = "quantity", defaultValue = "0") Integer quantity,
-            @RequestPart(value = "image", required = false) MultipartFile imageFile) {
+            @RequestParam(value = "description", required = false) String description,
+            @RequestParam(value = "publisher", required = false) String publisher,
+            @RequestParam(value = "publicationYear", required = false) Integer publicationYear,
+            @RequestParam(value = "dimensions", required = false) String dimensions,
+            @RequestParam(value = "coverType", required = false) String coverType,
+            @RequestParam(value = "numberOfPages", required = false) Integer numberOfPages,
+            @RequestParam(value = "language", required = false) String language,
+            @RequestPart(value = "image", required = false) MultipartFile imageFile,
+            @RequestPart(value = "subImages", required = false) MultipartFile[] subImages) {
 
         Book book = new Book();
         book.setTitle(title);
         book.setAuthor(author);
         book.setPrice(price);
         book.setQuantity(quantity);
+        book.setDescription(description);
+        book.setPublisher(publisher);
+        book.setPublicationYear(publicationYear);
+        book.setDimensions(dimensions);
+        book.setCoverType(coverType);
+        book.setNumberOfPages(numberOfPages);
+        book.setLanguage(language);
 
         Category category = new Category();
         category.setId(categoryId);
@@ -215,6 +208,22 @@ public class BookRestController {
             }
         }
 
+        if (subImages != null && subImages.length > 0) {
+            for (MultipartFile file : subImages) {
+                if (file != null && !file.isEmpty()) {
+                    try {
+                        String name = saveImageStatic(file);
+                        BookImage bi = BookImage.builder()
+                                .imagePath("/images/books/" + name)
+                                .book(book)
+                                .build();
+                        book.getSubImages().add(bi);
+                    } catch (IOException e) {
+                    }
+                }
+            }
+        }
+
         bookService.addBook(book);
         return ResponseEntity.status(HttpStatus.CREATED).body(book);
     }
@@ -226,13 +235,28 @@ public class BookRestController {
             @RequestParam("author") String author,
             @RequestParam("price") Double price,
             @RequestParam("categoryId") Long categoryId,
-            @RequestPart(value = "image", required = false) MultipartFile imageFile) {
+            @RequestParam(value = "description", required = false) String description,
+            @RequestParam(value = "publisher", required = false) String publisher,
+            @RequestParam(value = "publicationYear", required = false) Integer publicationYear,
+            @RequestParam(value = "dimensions", required = false) String dimensions,
+            @RequestParam(value = "coverType", required = false) String coverType,
+            @RequestParam(value = "numberOfPages", required = false) Integer numberOfPages,
+            @RequestParam(value = "language", required = false) String language,
+            @RequestPart(value = "image", required = false) MultipartFile imageFile,
+            @RequestPart(value = "subImages", required = false) MultipartFile[] subImages) {
 
         Book book = new Book();
         book.setId(id);
         book.setTitle(title);
         book.setAuthor(author);
         book.setPrice(price);
+        book.setDescription(description);
+        book.setPublisher(publisher);
+        book.setPublicationYear(publicationYear);
+        book.setDimensions(dimensions);
+        book.setCoverType(coverType);
+        book.setNumberOfPages(numberOfPages);
+        book.setLanguage(language);
 
         Category category = new Category();
         category.setId(categoryId);
@@ -243,7 +267,23 @@ public class BookRestController {
                 String imageName = saveImageStatic(imageFile);
                 book.setImagePath("/images/books/" + imageName);
             } catch (IOException e) {
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Could not upload image");
+            }
+        }
+
+        if (subImages != null && subImages.length > 0) {
+            book.setSubImages(new ArrayList<>()); // Clear old if we want to replace
+            for (MultipartFile file : subImages) {
+                if (file != null && !file.isEmpty()) {
+                    try {
+                        String name = saveImageStatic(file);
+                        BookImage bi = BookImage.builder()
+                                .imagePath("/images/books/" + name)
+                                .book(book)
+                                .build();
+                        book.getSubImages().add(bi);
+                    } catch (IOException e) {
+                    }
+                }
             }
         }
 
@@ -269,7 +309,6 @@ public class BookRestController {
         }
     }
 
-    // Helper function for uploading image
     private String saveImageStatic(MultipartFile image) throws IOException {
         Path uploadPath = Paths.get("uploads");
         if (!Files.exists(uploadPath)) {

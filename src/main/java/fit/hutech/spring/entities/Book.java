@@ -1,19 +1,9 @@
 package fit.hutech.spring.entities;
 
 import java.util.Objects;
-
 import org.hibernate.Hibernate;
-
 import fit.hutech.spring.Validator.annotations.ValidCategoryId;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
@@ -25,6 +15,9 @@ import lombok.Setter;
 import lombok.ToString;
 import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 
 @Getter
 @Setter
@@ -91,6 +84,32 @@ public class Book {
     @Column(name = "book_source")
     @Builder.Default
     private String bookSource = "OFFICIAL"; // "OFFICIAL" or "AUTHOR"
+
+    @Column(name = "description", columnDefinition = "TEXT")
+    private String description;
+
+    @Column(name = "publisher")
+    private String publisher;
+
+    @Column(name = "publication_year")
+    private Integer publicationYear;
+
+    @Column(name = "dimensions")
+    private String dimensions;
+
+    @Column(name = "cover_type")
+    private String coverType;
+
+    @Column(name = "number_of_pages")
+    private Integer numberOfPages;
+
+    @Column(name = "language")
+    private String language;
+
+    @OneToMany(mappedBy = "book", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    @ToString.Exclude
+    private List<BookImage> subImages = new ArrayList<>();
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = true, updatable = false)

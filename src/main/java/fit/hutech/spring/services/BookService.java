@@ -103,6 +103,24 @@ public class BookService {
                 existingBook.setImagePath(book.getImagePath());
             }
 
+            // Cập nhật thông tin chi tiết & thông số kỹ thuật
+            existingBook.setDescription(book.getDescription());
+            existingBook.setPublisher(book.getPublisher());
+            existingBook.setPublicationYear(book.getPublicationYear());
+            existingBook.setDimensions(book.getDimensions());
+            existingBook.setCoverType(book.getCoverType());
+            existingBook.setNumberOfPages(book.getNumberOfPages());
+            existingBook.setLanguage(book.getLanguage());
+
+            // Cập nhật ảnh phụ nếu có danh sách mới
+            if (book.getSubImages() != null && !book.getSubImages().isEmpty()) {
+                existingBook.getSubImages().clear();
+                for (fit.hutech.spring.entities.BookImage img : book.getSubImages()) {
+                    img.setBook(existingBook);
+                    existingBook.getSubImages().add(img);
+                }
+            }
+
             bookRepository.save(existingBook);
         }
     }
