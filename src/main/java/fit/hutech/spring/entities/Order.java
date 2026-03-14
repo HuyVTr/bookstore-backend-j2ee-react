@@ -34,6 +34,7 @@ public class Order {
 
     @ManyToOne
     @JoinColumn(name = "user_id")
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private User user;
 
     @Column(name = "order_date")
@@ -48,6 +49,9 @@ public class Order {
     @Column(name = "receiver_name")
     private String receiverName;
 
+    @Column(name = "sender_name")
+    private String senderName;
+
     @Column(name = "phone_number")
     private String phoneNumber;
 
@@ -58,7 +62,7 @@ public class Order {
     private String paymentMethod;
 
     @Column(name = "status")
-    private String status; // PENDING, SHIPPING, DELIVERED, CANCELLED
+    private String status; // PENDING, SHIPPING, COMPLETED, CANCELLED
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, fetch = jakarta.persistence.FetchType.EAGER)
     @Builder.Default

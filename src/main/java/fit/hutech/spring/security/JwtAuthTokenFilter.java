@@ -53,6 +53,12 @@ public class JwtAuthTokenFilter extends OncePerRequestFilter {
             return headerAuth.substring(7);
         }
 
+        // Check for token in query parameter (for direct browser requests like exports)
+        String queryToken = request.getParameter("token");
+        if (StringUtils.hasText(queryToken)) {
+            return queryToken;
+        }
+
         return null;
     }
 }

@@ -1,5 +1,6 @@
 package fit.hutech.spring.controllers.rest;
 
+import fit.hutech.spring.dtos.ReviewDTO;
 import fit.hutech.spring.entities.Review;
 import fit.hutech.spring.entities.User;
 import fit.hutech.spring.entities.Book;
@@ -13,7 +14,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequiredArgsConstructor
@@ -25,7 +28,11 @@ public class ReviewRestController {
 
     @GetMapping("/api/public/reviews/book/{bookId}")
     public ResponseEntity<?> getReviewsByBookId(@PathVariable Long bookId) {
-        return ResponseEntity.ok(reviewService.getReviewsByBookId(bookId));
+        List<Review> reviews = reviewService.getReviewsByBookId(bookId);
+        List<ReviewDTO> dtos = reviews.stream()
+                .map(ReviewDTO::fromEntity)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(dtos);
     }
 
     @GetMapping("/api/user/reviews/can-review/{bookId}")
@@ -41,7 +48,7 @@ public class ReviewRestController {
         if (currentUser == null) return ResponseEntity.status(401).body("Unauthorized");
 
         Long bookId = Long.valueOf(payload.get("bookId").toString());
-        Integer rating = (Integer) payload.get("rating");
+        Integer rating = payload.get("rating") != null ? Integer.valueOf(payload.get("rating").toString()) : 5;
         String comment = (String) payload.get("comment");
 
         Book book = bookService.getBookById(bookId).orElse(null);
@@ -55,7 +62,8 @@ public class ReviewRestController {
                 .build();
 
         try {
-            return ResponseEntity.ok(reviewService.addReview(review));
+            Review saved = reviewService.addReview(review);
+            return ResponseEntity.ok(ReviewDTO.fromEntity(saved));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }

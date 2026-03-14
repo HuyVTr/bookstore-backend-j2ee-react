@@ -68,8 +68,8 @@ public class CartRestController {
 
     @PostMapping("/checkout")
     public ResponseEntity<?> checkout(HttpSession session, @RequestBody OrderRequest request) {
-        cartService.saveOrder(session, request.getReceiverName(), request.getPhoneNumber(), request.getAddress(),
-                request.getNote(), request.getPaymentMethod());
+        cartService.saveOrder(session, request.getSenderName(), request.getReceiverName(), request.getPhoneNumber(), request.getAddress(),
+                request.getNote(), request.getPaymentMethod(), request.getItemIds());
         return ResponseEntity.ok("Order placed successfully");
     }
 }

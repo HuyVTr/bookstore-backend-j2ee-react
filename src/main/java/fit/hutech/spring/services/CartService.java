@@ -142,16 +142,31 @@ public class CartService {
                 .sum();
     }
 
-    public void saveOrder(@NotNull HttpSession session, String receiverName, String phoneNumber, String address,
-            String note, String paymentMethod) {
+    public void saveOrder(@NotNull HttpSession session, String senderName, String receiverName, String phoneNumber, String address,
+            String note, String paymentMethod, java.util.List<Long> itemIds) {
         var cart = getCart(session);
-        if (cart.getCartItems().isEmpty())
+        var cartItems = cart.getCartItems();
+        
+        // Lọc các item được chọn nếu có truyền itemIds
+        if (itemIds != null && !itemIds.isEmpty()) {
+            cartItems = cartItems.stream()
+                    .filter(item -> itemIds.contains(item.getBookId()))
+                    .collect(java.util.stream.Collectors.toList());
+        }
+
+        if (cartItems.isEmpty())
             return;
 
         // 1. Tạo và lưu hóa đơn (Order)
         var order = new fit.hutech.spring.entities.Order();
         order.setOrderDate(java.time.LocalDateTime.now());
-        order.setTotalPrice(getSumPrice(session));
+        
+        // Tính tổng tiền cho các item được chọn
+        double orderTotalPrice = cartItems.stream()
+                .mapToDouble(item -> item.getPrice() * item.getQuantity())
+                .sum();
+        order.setTotalPrice(orderTotalPrice);
+        
         order.setShippingAddress(address);
         order.setReceiverName(receiverName);
         order.setPhoneNumber(phoneNumber);
@@ -161,20 +176,22 @@ public class CartService {
 
         // Gán User hiện tại cho Order
         User user = getAuthenticatedUser();
-        if (user != null)
+        if (user != null) {
             order.setUser(user);
+            order.setSenderName((senderName != null && !senderName.isBlank()) ? senderName : user.getUsername());
+        } else {
+            order.setSenderName(senderName);
+        }
 
-        // Lưu Order trước để có ID
         orderRepository.save(order);
 
         // 2. Lưu chi tiết hóa đơn (OrderDetail)
-        cart.getCartItems().forEach(item -> {
+        cartItems.forEach(item -> {
             var orderDetail = new fit.hutech.spring.entities.OrderDetail();
             orderDetail.setOrder(order);
             orderDetail.setQuantity(item.getQuantity());
             orderDetail.setPrice(item.getPrice());
 
-            // Tìm sách theo ID và cập nhật lượt bán
             fit.hutech.spring.entities.Book book = bookRepository.findById(item.getBookId()).orElseThrow();
             orderDetail.setBook(book);
             
@@ -185,7 +202,27 @@ public class CartService {
             orderDetailRepository.save(orderDetail);
         });
 
-        // 3. Xóa giỏ hàng sau khi đã thanh toán thành công
-        removeCart(session);
+        // 3. Xóa các item đã thanh toán khỏi giỏ hàng
+        if (user != null) {
+            shoppingCartRepository.findByUserId(user.getId()).ifPresent(cartEntity -> {
+                if (itemIds != null && !itemIds.isEmpty()) {
+                    cartEntity.getItems().removeIf(item -> itemIds.contains(item.getBook().getId()));
+                } else {
+                    cartEntity.getItems().clear();
+                }
+                shoppingCartRepository.save(cartEntity);
+            });
+        }
+        
+        // Cập nhật session cart
+        Cart sessionCart = (Cart) session.getAttribute(CART_SESSION_KEY);
+        if (sessionCart != null) {
+            if (itemIds != null && !itemIds.isEmpty()) {
+                sessionCart.getCartItems().removeIf(item -> itemIds.contains(item.getBookId()));
+            } else {
+                sessionCart.getCartItems().clear();
+            }
+            session.setAttribute(CART_SESSION_KEY, sessionCart);
+        }
     }
 }

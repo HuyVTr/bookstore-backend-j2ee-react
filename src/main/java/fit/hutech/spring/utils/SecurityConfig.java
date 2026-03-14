@@ -68,7 +68,7 @@ public class SecurityConfig {
                                                 .requestMatchers("/api/admin/**").hasAuthority("ADMIN")
 
                                                 // API chung yêu cầu đăng nhập
-                                                .requestMatchers("/api/cart/**", "/api/order/**", "/api/profile/**")
+                                                .requestMatchers("/api/cart/**", "/api/orders/**", "/api/profile/**")
                                                 .authenticated()
 
                                                 .anyRequest().authenticated())
