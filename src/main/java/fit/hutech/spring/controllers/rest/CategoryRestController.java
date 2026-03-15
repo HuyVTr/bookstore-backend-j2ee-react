@@ -25,6 +25,7 @@ public class CategoryRestController {
     // For simplicity following the existing codebase pattern, using Context
     // directly.
     private final ICategoryRepository categoryRepository;
+    private final fit.hutech.spring.repositories.IBookRepository bookRepository;
 
     @GetMapping
     public ResponseEntity<List<Category>> getAllCategories() {
@@ -57,6 +58,11 @@ public class CategoryRestController {
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteCategory(@PathVariable Long id) {
         return categoryRepository.findById(id).map(existingCategory -> {
+            long bookCount = bookRepository.countByCategoryId(id);
+            if (bookCount > 0) {
+                return ResponseEntity.badRequest()
+                        .body("Không thể xóa danh mục này vì vẫn còn " + bookCount + " đầu sách đang trực thuộc. Hãy chuyển sách sang danh mục khác trước khi xóa.");
+            }
             categoryRepository.delete(existingCategory);
             return ResponseEntity.ok("Deleted successfully");
         }).orElse(ResponseEntity.notFound().build());

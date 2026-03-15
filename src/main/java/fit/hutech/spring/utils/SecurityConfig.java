@@ -60,7 +60,7 @@ public class SecurityConfig {
                                 .authorizeHttpRequests(auth -> auth
                                                 // Public endpoints
                                                 .requestMatchers("/api/auth/**", "/api/public/**", "/images/**",
-                                                                "/oauth2/**")
+                                                                "/api/admin/configs/public", "/oauth2/**")
                                                 .permitAll()
 
                                                 // Phân quyền API STAFF / ADMIN
@@ -89,8 +89,8 @@ public class SecurityConfig {
                 configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000", "http://localhost:5173")); // URL
                                                                                                                   // Frontend
                 configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-                configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Auth-Token"));
-                configuration.setExposedHeaders(Arrays.asList("x-auth-token"));
+                configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin", "Access-Control-Request-Method", "Access-Control-Request-Headers"));
+                configuration.setExposedHeaders(Arrays.asList("Authorization", "Content-Disposition", "x-auth-token"));
                 configuration.setAllowCredentials(true);
                 UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
                 source.registerCorsConfiguration("/**", configuration);

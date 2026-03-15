@@ -41,10 +41,20 @@ public interface IBookRepository extends JpaRepository<Book, Long> {
     // TOP 4 Sách Xem Nhiều Nhất
     List<Book> findTop4ByOrderByViewCountDesc();
 
+    long countByQuantityLessThan(Integer quantity);
+
     // === BỔ SUNG CHO DI CƯ DỮ LIỆU ===
     List<Book> findByCategoryId(Long categoryId);
 
     @org.springframework.data.jpa.repository.Modifying
     @org.springframework.data.jpa.repository.Query("UPDATE Book b SET b.category = ?1 WHERE b.category.id = ?2")
     void updateCategoryForBooks(fit.hutech.spring.entities.Category newCategory, Long oldCategoryId);
+
+    long countByCategoryId(Long categoryId);
+
+    long countByCreatedById(Long userId);
+
+    long countByUpdatedById(Long userId);
+
+    java.util.List<Book> findByCreatedById(Long userId);
 }

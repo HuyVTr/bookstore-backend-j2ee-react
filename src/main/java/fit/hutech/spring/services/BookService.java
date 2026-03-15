@@ -21,6 +21,7 @@ public class BookService {
     private final IBookRepository bookRepository;
     private final IOrderDetailRepository orderDetailRepository;
     private final fit.hutech.spring.repositories.IAuthorRepository authorRepository;
+    private final UserService userService;
 
     public Book getBestSellingBook() {
         var topSelling = orderDetailRepository.findTopSellingBooks(PageRequest.of(0, 1));
@@ -84,6 +85,7 @@ public class BookService {
 
     public void addBook(Book book) {
         ensureAuthorMetadataExists(book.getAuthor());
+        userService.getCurrentUser().ifPresent(book::setCreatedBy);
         bookRepository.save(book);
     }
 
@@ -97,6 +99,9 @@ public class BookService {
             existingBook.setAuthor(book.getAuthor());
             existingBook.setPrice(book.getPrice());
             existingBook.setCategory(book.getCategory());
+            
+            // Set updated by
+            userService.getCurrentUser().ifPresent(existingBook::setUpdatedBy);
 
             // Chỉ cập nhật ảnh nếu có ảnh mới được cung cấp
             if (book.getImagePath() != null && !book.getImagePath().isEmpty()) {

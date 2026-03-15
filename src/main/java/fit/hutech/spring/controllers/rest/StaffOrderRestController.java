@@ -20,6 +20,7 @@ import lombok.RequiredArgsConstructor;
 public class StaffOrderRestController {
 
     private final OrderService orderService;
+    private final fit.hutech.spring.services.SystemActivityService activityService;
 
     @GetMapping
     public ResponseEntity<List<Order>> getAllOrders() {
@@ -37,6 +38,7 @@ public class StaffOrderRestController {
     public ResponseEntity<?> updateOrderStatus(@PathVariable Long id, @RequestParam String status) {
         try {
             orderService.updateOrderStatus(id, status);
+            activityService.log("order", "Đã cập nhật đơn hàng #" + id + " sang trạng thái: " + status);
             return ResponseEntity.ok("Order status updated successfully");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Failed to update status: " + e.getMessage());

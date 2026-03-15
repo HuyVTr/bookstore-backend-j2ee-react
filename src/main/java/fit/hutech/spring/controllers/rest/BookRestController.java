@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import fit.hutech.spring.dtos.AuthorSalesDTO;
+import fit.hutech.spring.dtos.BookFormDTO;
 import fit.hutech.spring.dtos.CategorySalesDTO;
 import fit.hutech.spring.entities.Book;
 import fit.hutech.spring.entities.BookImage;
@@ -23,12 +24,16 @@ import fit.hutech.spring.entities.Category;
 import fit.hutech.spring.services.BookService;
 import lombok.RequiredArgsConstructor;
 
+import fit.hutech.spring.repositories.ReviewRepository;
+
 @RestController
 @RequiredArgsConstructor
 public class BookRestController {
 
     private final fit.hutech.spring.repositories.ICategoryRepository categoryRepository;
     private final BookService bookService;
+    private final ReviewRepository reviewRepository;
+    private final fit.hutech.spring.services.SystemActivityService activityService;
 
     @GetMapping("/api/public/categories")
     public ResponseEntity<?> getAllCategories() {
@@ -41,24 +46,83 @@ public class BookRestController {
         return ResponseEntity.ok(bookService.getTopSellingAuthors(limit));
     }
 
+    private Map<String, Object> enrichOneBook(Book b) {
+        if (b == null) return null;
+        Map<String, Object> bMap = new HashMap<>();
+        bMap.put("id", b.getId());
+        bMap.put("title", b.getTitle());
+        bMap.put("author", b.getAuthor());
+        bMap.put("price", b.getPrice());
+        bMap.put("discountPrice", b.getDiscountPrice());
+        bMap.put("imagePath", b.getImagePath());
+        bMap.put("quantity", b.getQuantity());
+        
+        if (b.getCategory() != null) {
+            Map<String, Object> catMap = new HashMap<>();
+            catMap.put("id", b.getCategory().getId());
+            catMap.put("name", b.getCategory().getName());
+            bMap.put("category", catMap);
+        } else {
+            bMap.put("category", null);
+        }
+
+        bMap.put("isFeatured", b.getIsFeatured());
+        bMap.put("isOnSale", b.getIsOnSale());
+        bMap.put("totalSold", b.getTotalSold());
+        bMap.put("bookSource", b.getBookSource());
+        bMap.put("description", b.getDescription());
+        bMap.put("publisher", b.getPublisher());
+        bMap.put("publicationYear", b.getPublicationYear());
+        bMap.put("dimensions", b.getDimensions());
+        bMap.put("coverType", b.getCoverType());
+        bMap.put("numberOfPages", b.getNumberOfPages());
+        bMap.put("language", b.getLanguage());
+        
+        // Thêm subImages sạch (dưới dạng object để tương thích với Frontend)
+        if (b.getSubImages() != null) {
+            java.util.List<Map<String, String>> subImgs = b.getSubImages().stream()
+                .map(si -> {
+                    Map<String, String> m = new HashMap<>();
+                    m.put("imagePath", si.getImagePath());
+                    return m;
+                })
+                .collect(java.util.stream.Collectors.toList());
+            bMap.put("subImages", subImgs);
+        }
+
+        Double avg = reviewRepository.findAverageRatingByBookId(b.getId());
+        long reviewCount = reviewRepository.countByBookId(b.getId());
+        bMap.put("averageRating", avg != null ? Math.round(avg * 10.0) / 10.0 : 0.0);
+        bMap.put("reviewCount", reviewCount);
+        return bMap;
+    }
+
+    private java.util.List<Map<String, Object>> enrichBooks(java.util.List<Book> books) {
+        java.util.List<Map<String, Object>> result = new java.util.ArrayList<>();
+        for (Book b : books) {
+            result.add(enrichOneBook(b));
+        }
+        return result;
+    }
+
     @GetMapping("/api/public/books/featured")
-    public ResponseEntity<java.util.List<Book>> getFeaturedBooks() {
-        return ResponseEntity.ok(bookService.getFeaturedBooks());
+    public ResponseEntity<?> getFeaturedBooks() {
+        return ResponseEntity.ok(enrichBooks(bookService.getFeaturedBooks()));
     }
 
     @GetMapping("/api/public/books/on-sale")
-    public ResponseEntity<java.util.List<Book>> getOnSaleBooks() {
-        return ResponseEntity.ok(bookService.getOnSaleBooks());
+    public ResponseEntity<?> getOnSaleBooks() {
+        return ResponseEntity.ok(enrichBooks(bookService.getOnSaleBooks()));
     }
 
     @GetMapping("/api/public/books/most-viewed")
-    public ResponseEntity<java.util.List<Book>> getMostViewedBooks() {
-        return ResponseEntity.ok(bookService.getMostViewedBooks());
+    public ResponseEntity<?> getMostViewedBooks() {
+        return ResponseEntity.ok(enrichBooks(bookService.getMostViewedBooks()));
     }
 
     @GetMapping("/api/public/books/newest")
-    public ResponseEntity<java.util.List<Book>> getNewestBooks() {
-        return ResponseEntity.ok(bookService.getNewestBooks());
+    public ResponseEntity<?> getNewestBooks() {
+        return ResponseEntity.ok(enrichBooks(bookService.getNewestBooks()));
     }
 
     @GetMapping("/api/public/books/best-seller")
@@ -66,7 +130,7 @@ public class BookRestController {
         Book bestSeller = bookService.getBestSellingBook();
         if (bestSeller == null)
             return ResponseEntity.noContent().build();
-        return ResponseEntity.ok(bestSeller);
+        return ResponseEntity.ok(enrichOneBook(bestSeller));
     }
 
     @GetMapping("/api/public/categories/top-selling")
@@ -130,8 +194,38 @@ public class BookRestController {
         int end = Math.min(start + pageSize, totalItems);
         java.util.List<Book> pagedBooks = (start < totalItems) ? filteredBooks.subList(start, end) : new java.util.ArrayList<>();
 
+        // Enrich each book with rating data
+        java.util.List<Map<String, Object>> enrichedBooks = new java.util.ArrayList<>();
+        for (Book b : pagedBooks) {
+            Map<String, Object> bMap = new HashMap<>();
+            bMap.put("id", b.getId());
+            bMap.put("title", b.getTitle());
+            bMap.put("author", b.getAuthor());
+            bMap.put("price", b.getPrice());
+            bMap.put("discountPrice", b.getDiscountPrice());
+            bMap.put("imagePath", b.getImagePath());
+            bMap.put("quantity", b.getQuantity());
+            bMap.put("category", b.getCategory());
+            bMap.put("isFeatured", b.getIsFeatured());
+            bMap.put("isOnSale", b.getIsOnSale());
+            bMap.put("totalSold", b.getTotalSold());
+            bMap.put("bookSource", b.getBookSource());
+            bMap.put("description", b.getDescription());
+            bMap.put("publisher", b.getPublisher());
+            bMap.put("publicationYear", b.getPublicationYear());
+            bMap.put("dimensions", b.getDimensions());
+            bMap.put("coverType", b.getCoverType());
+            bMap.put("numberOfPages", b.getNumberOfPages());
+            bMap.put("language", b.getLanguage());
+            Double avg = reviewRepository.findAverageRatingByBookId(b.getId());
+            long reviewCount = reviewRepository.countByBookId(b.getId());
+            bMap.put("averageRating", avg != null ? Math.round(avg * 10.0) / 10.0 : 0.0);
+            bMap.put("reviewCount", reviewCount);
+            enrichedBooks.add(bMap);
+        }
+
         Map<String, Object> response = new HashMap<>();
-        response.put("books", pagedBooks);
+        response.put("books", enrichedBooks);
         response.put("currentPage", pageNo);
         response.put("totalItems", (long)totalItems);
         response.put("totalPages", totalItems > 0 ? (int) Math.ceil((double) totalItems / pageSize) - 1 : 0);
@@ -161,55 +255,43 @@ public class BookRestController {
     @GetMapping("/api/public/books/{id}")
     public ResponseEntity<?> getBookDetail(@PathVariable Long id) {
         return bookService.getBookById(id)
-                .map(ResponseEntity::ok)
+                .map(b -> ResponseEntity.ok(enrichOneBook(b)))
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @PostMapping("/api/staff/books")
-    public ResponseEntity<?> addBook(
-            @RequestParam("title") String title,
-            @RequestParam("author") String author,
-            @RequestParam("price") Double price,
-            @RequestParam("categoryId") Long categoryId,
-            @RequestParam(value = "quantity", defaultValue = "0") Integer quantity,
-            @RequestParam(value = "description", required = false) String description,
-            @RequestParam(value = "publisher", required = false) String publisher,
-            @RequestParam(value = "publicationYear", required = false) Integer publicationYear,
-            @RequestParam(value = "dimensions", required = false) String dimensions,
-            @RequestParam(value = "coverType", required = false) String coverType,
-            @RequestParam(value = "numberOfPages", required = false) Integer numberOfPages,
-            @RequestParam(value = "language", required = false) String language,
-            @RequestPart(value = "image", required = false) MultipartFile imageFile,
-            @RequestPart(value = "subImages", required = false) MultipartFile[] subImages) {
-
+    public ResponseEntity<?> addBook(@ModelAttribute BookFormDTO form) {
+        System.out.println("--- DEBUG ADD BOOK (ModelAttribute) ---");
+        System.out.println("Title: " + form.getTitle());
+        
         Book book = new Book();
-        book.setTitle(title);
-        book.setAuthor(author);
-        book.setPrice(price);
-        book.setQuantity(quantity);
-        book.setDescription(description);
-        book.setPublisher(publisher);
-        book.setPublicationYear(publicationYear);
-        book.setDimensions(dimensions);
-        book.setCoverType(coverType);
-        book.setNumberOfPages(numberOfPages);
-        book.setLanguage(language);
+        book.setTitle(form.getTitle());
+        book.setAuthor(form.getAuthor());
+        book.setPrice(form.getPrice());
+        book.setQuantity(form.getQuantity() != null ? form.getQuantity() : 0);
+        book.setDescription(form.getDescription());
+        book.setPublisher(form.getPublisher());
+        book.setPublicationYear(form.getPublicationYear());
+        book.setDimensions(form.getDimensions());
+        book.setCoverType(form.getCoverType());
+        book.setNumberOfPages(form.getNumberOfPages());
+        book.setLanguage(form.getLanguage());
 
         Category category = new Category();
-        category.setId(categoryId);
+        category.setId(form.getCategoryId());
         book.setCategory(category);
 
-        if (imageFile != null && !imageFile.isEmpty()) {
+        if (form.getImage() != null && !form.getImage().isEmpty()) {
             try {
-                String imageName = saveImageStatic(imageFile);
+                String imageName = saveImageStatic(form.getImage());
                 book.setImagePath("/images/books/" + imageName);
             } catch (IOException e) {
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Could not upload image");
             }
         }
 
-        if (subImages != null && subImages.length > 0) {
-            for (MultipartFile file : subImages) {
+        if (form.getSubImages() != null && form.getSubImages().length > 0) {
+            for (MultipartFile file : form.getSubImages()) {
                 if (file != null && !file.isEmpty()) {
                     try {
                         String name = saveImageStatic(file);
@@ -225,54 +307,49 @@ public class BookRestController {
         }
 
         bookService.addBook(book);
-        return ResponseEntity.status(HttpStatus.CREATED).body(book);
+        activityService.log("book", "Đã thêm sách mới: " + book.getTitle());
+        Map<String, Object> result = new HashMap<>();
+        result.put("id", book.getId());
+        result.put("title", book.getTitle());
+        result.put("message", "Book added successfully");
+        return ResponseEntity.status(HttpStatus.CREATED).body(result);
     }
 
     @PutMapping("/api/staff/books/{id}")
-    public ResponseEntity<?> updateBook(
-            @PathVariable Long id,
-            @RequestParam("title") String title,
-            @RequestParam("author") String author,
-            @RequestParam("price") Double price,
-            @RequestParam("categoryId") Long categoryId,
-            @RequestParam(value = "description", required = false) String description,
-            @RequestParam(value = "publisher", required = false) String publisher,
-            @RequestParam(value = "publicationYear", required = false) Integer publicationYear,
-            @RequestParam(value = "dimensions", required = false) String dimensions,
-            @RequestParam(value = "coverType", required = false) String coverType,
-            @RequestParam(value = "numberOfPages", required = false) Integer numberOfPages,
-            @RequestParam(value = "language", required = false) String language,
-            @RequestPart(value = "image", required = false) MultipartFile imageFile,
-            @RequestPart(value = "subImages", required = false) MultipartFile[] subImages) {
-
+    public ResponseEntity<?> updateBook(@PathVariable Long id, @ModelAttribute BookFormDTO form) {
+        System.out.println("--- DEBUG UPDATE BOOK (ModelAttribute) ---");
+        
         Book book = new Book();
         book.setId(id);
-        book.setTitle(title);
-        book.setAuthor(author);
-        book.setPrice(price);
-        book.setDescription(description);
-        book.setPublisher(publisher);
-        book.setPublicationYear(publicationYear);
-        book.setDimensions(dimensions);
-        book.setCoverType(coverType);
-        book.setNumberOfPages(numberOfPages);
-        book.setLanguage(language);
+        book.setTitle(form.getTitle());
+        book.setAuthor(form.getAuthor());
+        book.setPrice(form.getPrice());
+        book.setDescription(form.getDescription());
+        book.setPublisher(form.getPublisher());
+        book.setPublicationYear(form.getPublicationYear());
+        book.setDimensions(form.getDimensions());
+        book.setCoverType(form.getCoverType());
+        book.setNumberOfPages(form.getNumberOfPages());
+        book.setLanguage(form.getLanguage());
+        if (form.getQuantity() != null) {
+            book.setQuantity(form.getQuantity());
+        }
 
         Category category = new Category();
-        category.setId(categoryId);
+        category.setId(form.getCategoryId());
         book.setCategory(category);
 
-        if (imageFile != null && !imageFile.isEmpty()) {
+        if (form.getImage() != null && !form.getImage().isEmpty()) {
             try {
-                String imageName = saveImageStatic(imageFile);
+                String imageName = saveImageStatic(form.getImage());
                 book.setImagePath("/images/books/" + imageName);
             } catch (IOException e) {
             }
         }
 
-        if (subImages != null && subImages.length > 0) {
+        if (form.getSubImages() != null && form.getSubImages().length > 0) {
             book.setSubImages(new ArrayList<>()); // Clear old if we want to replace
-            for (MultipartFile file : subImages) {
+            for (MultipartFile file : form.getSubImages()) {
                 if (file != null && !file.isEmpty()) {
                     try {
                         String name = saveImageStatic(file);
@@ -288,21 +365,48 @@ public class BookRestController {
         }
 
         bookService.updateBook(book);
-        return ResponseEntity.ok(book);
+        activityService.log("book", "Đã cập nhật thông tin sách: " + book.getTitle());
+        Map<String, Object> result = new HashMap<>();
+        result.put("id", book.getId());
+        result.put("title", book.getTitle());
+        result.put("message", "Book updated successfully");
+        return ResponseEntity.ok(result);
+    }
+
+    @PatchMapping("/api/staff/books/{id}/featured")
+    public ResponseEntity<?> toggleFeatured(@PathVariable Long id) {
+        return bookService.getBookById(id).map(book -> {
+            book.setIsFeatured(!Boolean.TRUE.equals(book.getIsFeatured()));
+            bookService.updateBook(book);
+            activityService.log("book", "Đã " + (book.getIsFeatured() ? "đặt làm SP nổi bật: " : "hủy SP nổi bật: ") + book.getTitle());
+            Map<String, Object> result = new HashMap<>();
+            result.put("id", book.getId());
+            result.put("isFeatured", book.getIsFeatured());
+            return ResponseEntity.ok(result);
+        }).orElse(ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/api/staff/books/{id}")
     public ResponseEntity<?> deleteBook(@PathVariable Long id) {
-        return bookService.getBookById(id).map(book -> {
-            bookService.deleteBookById(id);
-            return ResponseEntity.ok().build();
-        }).orElse(ResponseEntity.notFound().build());
+        try {
+            return bookService.getBookById(id).map(book -> {
+                bookService.deleteBookById(id);
+                activityService.log("book", "Đã xóa sách: " + book.getTitle() + " (ID: " + id + ")");
+                return ResponseEntity.ok("Đã xóa sách thành công");
+            }).orElse(ResponseEntity.notFound().build());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Không thể xóa sách. Có thể sách này đã có trong đơn hàng của khách.");
+        }
     }
 
     @PatchMapping("/api/staff/books/{id}/quantity")
     public ResponseEntity<?> updateBookQuantity(@PathVariable Long id, @RequestParam Integer changeAmount) {
         try {
             bookService.updateBookQuantity(id, changeAmount);
+            bookService.getBookById(id).ifPresent(b -> {
+                activityService.log("stock", "Đã cập nhật kho cho sách: " + b.getTitle() + " (Thay đổi: " + (changeAmount > 0 ? "+" : "") + changeAmount + ")");
+            });
             return ResponseEntity.ok("Quantity updated");
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
@@ -310,7 +414,7 @@ public class BookRestController {
     }
 
     private String saveImageStatic(MultipartFile image) throws IOException {
-        Path uploadPath = Paths.get("uploads");
+        Path uploadPath = Paths.get("uploads", "books");
         if (!Files.exists(uploadPath)) {
             Files.createDirectories(uploadPath);
         }

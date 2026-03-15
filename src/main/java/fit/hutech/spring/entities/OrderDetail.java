@@ -31,6 +31,7 @@ public class OrderDetail {
     @com.fasterxml.jackson.annotation.JsonIgnore
     private Order order;
 
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "category", "subImages", "createdBy", "updatedBy"})
     @ManyToOne
     @JoinColumn(name = "book_id")
     private Book book;

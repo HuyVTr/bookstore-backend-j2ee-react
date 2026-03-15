@@ -76,6 +76,9 @@ public class User implements UserDetails {
     @Column(name = "avatar_path", length = 255)
     private String avatarPath;
 
+    @Column(name = "bio", columnDefinition = "TEXT")
+    private String bio;
+
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "user_role", joinColumns = @JoinColumn(name = "user_id"), inverseJoinColumns = @JoinColumn(name = "role_id"))
     @Builder.Default

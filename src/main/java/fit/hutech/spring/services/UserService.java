@@ -21,6 +21,15 @@ public class UserService implements UserDetailsService {
     private final IUserRepository userRepository;
     private final IRoleRepository roleRepository;
 
+    public Optional<User> getCurrentUser() {
+        org.springframework.security.core.Authentication authentication = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated() || authentication instanceof org.springframework.security.authentication.AnonymousAuthenticationToken) {
+            return Optional.empty();
+        }
+        String username = authentication.getName();
+        return userRepository.findByUsername(username);
+    }
+
     @Override
     public UserDetails loadUserByUsername(String loginId) throws UsernameNotFoundException {
         return userRepository.findByUsernameOrEmail(loginId, loginId)

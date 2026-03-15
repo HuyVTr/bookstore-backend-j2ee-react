@@ -27,4 +27,7 @@ public interface IOrderDetailRepository extends JpaRepository<OrderDetail, Long>
 
         @org.springframework.data.jpa.repository.Query("SELECT COUNT(d) > 0 FROM OrderDetail d WHERE d.order.user.id = :userId AND d.book.id = :bookId AND d.order.status = 'COMPLETED'")
         boolean hasPurchasedBook(@org.springframework.data.repository.query.Param("userId") Long userId, @org.springframework.data.repository.query.Param("bookId") Long bookId);
+
+    @org.springframework.data.jpa.repository.Query("SELECT b.category.name, SUM(d.quantity * d.price) FROM OrderDetail d JOIN d.book b WHERE d.order.status = 'COMPLETED' GROUP BY b.category.name")
+    java.util.List<Object[]> getRevenueByCategory();
 }

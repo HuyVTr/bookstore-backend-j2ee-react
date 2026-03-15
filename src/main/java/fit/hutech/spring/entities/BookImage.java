@@ -18,7 +18,9 @@ public class BookImage {
     @Column(name = "image_path")
     private String imagePath;
 
-    @ManyToOne
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "book_id")
     private Book book;
 }

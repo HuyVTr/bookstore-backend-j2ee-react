@@ -55,11 +55,24 @@ public class Book {
     @Builder.Default
     private Integer quantity = 0;
 
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "category_id", referencedColumnName = "id")
     @ValidCategoryId
     @ToString.Exclude
     private Category category;
+
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by")
+    @ToString.Exclude
+    private User createdBy;
+
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "updated_by")
+    @ToString.Exclude
+    private User updatedBy;
 
     @Column(name = "is_featured")
     @Builder.Default

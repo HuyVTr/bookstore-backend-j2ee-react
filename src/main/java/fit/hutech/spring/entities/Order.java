@@ -63,6 +63,11 @@ public class Order {
 
     @Column(name = "status")
     private String status; // PENDING, SHIPPING, COMPLETED, CANCELLED
+    
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "roles", "password"})
+    @ManyToOne(fetch = jakarta.persistence.FetchType.LAZY)
+    @JoinColumn(name = "processed_by")
+    private User processedBy;
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, fetch = jakarta.persistence.FetchType.EAGER)
     @Builder.Default

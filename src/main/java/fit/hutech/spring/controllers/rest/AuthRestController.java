@@ -27,18 +27,27 @@ public class AuthRestController {
     private final JwtUtils jwtUtils;
     private final fit.hutech.spring.services.UserService userService;
     private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
+    private final fit.hutech.spring.services.SystemConfigService configService;
 
     public AuthRestController(AuthenticationManager authenticationManager, JwtUtils jwtUtils,
             fit.hutech.spring.services.UserService userService,
-            org.springframework.security.crypto.password.PasswordEncoder passwordEncoder) {
+            org.springframework.security.crypto.password.PasswordEncoder passwordEncoder,
+            fit.hutech.spring.services.SystemConfigService configService) {
         this.authenticationManager = authenticationManager;
         this.jwtUtils = jwtUtils;
         this.userService = userService;
         this.passwordEncoder = passwordEncoder;
+        this.configService = configService;
     }
 
     @PostMapping("/login")
     public ResponseEntity<?> authenticateUser(@RequestBody LoginRequest loginRequest) {
+        // Kiểm tra chế độ bảo trì
+        if (configService.getSystemConfig().isMaintenanceMode()) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE)
+                    .body("Hệ thống đang trong chế độ bảo trì. Vui lòng quay lại sau.");
+        }
+        
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword()));
 
@@ -62,6 +71,11 @@ public class AuthRestController {
     @PostMapping("/register")
     public ResponseEntity<?> registerUser(@jakarta.validation.Valid @RequestBody fit.hutech.spring.entities.User user,
             org.springframework.validation.BindingResult bindingResult) {
+        // Kiểm tra cấu hình cho phép đăng ký
+        if (!configService.getSystemConfig().isAllowRegistration()) {
+            return ResponseEntity.badRequest().body("Tính năng đăng ký hiện đang bị khóa bởi quản trị viên.");
+        }
+
         if (bindingResult.hasErrors()) {
             List<String> errors = bindingResult.getAllErrors().stream()
                     .map(org.springframework.context.support.DefaultMessageSourceResolvable::getDefaultMessage)

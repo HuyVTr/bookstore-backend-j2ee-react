@@ -24,6 +24,8 @@ public class ProfileRestController {
 
     private final UserService userService;
     private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
+    private final fit.hutech.spring.repositories.IBookRepository bookRepository;
+    private final fit.hutech.spring.repositories.IOrderRepository orderRepository;
 
     @GetMapping
     public ResponseEntity<?> getProfile() {
@@ -40,7 +42,38 @@ public class ProfileRestController {
             return ResponseEntity.status(404).body("User not found");
         }
 
-        return ResponseEntity.ok(currentUser);
+        return ResponseEntity.ok(createProfileResponse(currentUser));
+    }
+
+    private java.util.Map<String, Object> createProfileResponse(User currentUser) {
+        // Calculate stats
+        long booksCount = bookRepository.countByCreatedById(currentUser.getId());
+        long ordersCount = orderRepository.countByProcessedById(currentUser.getId());
+
+        java.util.Map<String, Object> response = new java.util.HashMap<>();
+        response.put("user", currentUser); // Wrapper user object
+        // Direct properties for easy access
+        response.put("id", currentUser.getId());
+        response.put("username", currentUser.getUsername());
+        response.put("email", currentUser.getEmail());
+        response.put("fullName", currentUser.getFullName());
+        response.put("phone", currentUser.getPhone());
+        response.put("address", currentUser.getAddress());
+        response.put("avatarPath", currentUser.getAvatarPath());
+        response.put("bio", currentUser.getBio());
+        response.put("roles", currentUser.getRoles());
+        
+        // Add Stats
+        response.put("booksCount", booksCount);
+        response.put("ordersCount", ordersCount);
+        
+        // Add Author specific stats
+        Long authorSales = orderRepository.getTotalSalesByAuthorId(currentUser.getId());
+        Double authorRevenue = orderRepository.getTotalRevenueByAuthorId(currentUser.getId());
+        response.put("totalAuthorSales", authorSales != null ? authorSales : 0);
+        response.put("totalAuthorRevenue", authorRevenue != null ? authorRevenue : 0.0);
+
+        return response;
     }
 
     @PutMapping
@@ -68,9 +101,10 @@ public class ProfileRestController {
         currentUser.setFullName(updatedUser.getFullName());
         currentUser.setPhone(updatedUser.getPhone());
         currentUser.setAddress(updatedUser.getAddress());
+        currentUser.setBio(updatedUser.getBio());
 
         userService.save(currentUser);
-        return ResponseEntity.ok(currentUser);
+        return ResponseEntity.ok(createProfileResponse(currentUser));
     }
 
     @PostMapping("/change-password")

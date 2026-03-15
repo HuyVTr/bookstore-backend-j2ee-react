@@ -35,6 +35,6 @@ public class Category {
     private String icon;
 
     @com.fasterxml.jackson.annotation.JsonIgnore
-    @OneToMany(mappedBy = "category", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "category")
     private List<Book> books;
 }
